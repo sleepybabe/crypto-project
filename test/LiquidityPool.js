@@ -38,20 +38,19 @@ const {
             expect(await liquidityPool.managerAddress()).to.equal(manager.address);
         })
 
-        // it("Should set the right manager", async function () {
-        //     const { liquidityPool, manager} = await loadFixture(deployContract);
-        //     expect(await liquidityPool.managerAddress()).to.equal(manager.address);
-        // })
-        it("Should send token to the new address", async function () {
-            const { liquidityPool, manager, usdc} = await loadFixture(deployContract);
-
-            await expect(liquidityPool.provide(1).to.changeEtherBalances());
-            // expect(await liquidityPool.managerAddress()).to.equal(manager.address);
-        })
+        it("Should transfer tokens", async function () {
+            const { liquidityPool, manager, usdc } = await loadFixture(deployContract);
+            await usdc.approve(liquidityPool.target, usdc.target)
+            const amountToken = 100;
+            await liquidityPool.provide(amountToken);
+            const contractBalance = await usdc.balanceOf(liquidityPool.target);
+            // console.log("contractBalance", contractBalance)
+            expect(contractBalance).to.equal(amountToken);
+            const managerBalance = await usdc.balanceOf(manager.address);
+            // console.log("managerBalance", managerBalance)
+            expect(managerBalance).to.equal(10_000_000e6 - amountToken);
+          });       
     });
-
-    // describe("Provide", function() {
-       
-    // });
   });
+  
 
