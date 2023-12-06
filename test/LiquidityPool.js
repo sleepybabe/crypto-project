@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
+// const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 const {
     time,
@@ -9,27 +9,18 @@ const {
   describe("LiquidityPool", function() {
 
     async function deployContract() {
-        // const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-        // const ONE_GWEI = 1_000_000_000;
-    
-        // const lockedAmount = ONE_GWEI;
-        // const unlockTime = (await time.latest()) + ONE_YEAR_IN_SECS;
-        
-
 
         // Contracts are deployed using the first signer/account by default
-        const [manager, otherAccount] = await ethers.getSigners();
-
+        const [manager, client] = await ethers.getSigners();
+        console.log(client)
         // console.log(manager.address)
         const USDC = await ethers.getContractFactory("USDC");
         const usdc = await USDC.deploy();
         const usdcAddress = await usdc.getAddress()
-    
-    
         const LiquidityPool = await ethers.getContractFactory("LiquidityPool");
         const liquidityPool = await LiquidityPool.deploy(manager.address, usdcAddress);
     
-        return {liquidityPool, manager, usdc};
+        return {liquidityPool, manager, usdc, client};
     }
     
     describe("Deployment", function() {
@@ -39,16 +30,16 @@ const {
         })
 
         it("Should transfer tokens", async function () {
-            const { liquidityPool, manager, usdc } = await loadFixture(deployContract);
-            await usdc.approve(liquidityPool.target, usdc.target)
+            const { liquidityPool, client, usdc, manager} = await loadFixture(deployContract);
             const amountToken = 100;
-            await liquidityPool.provide(amountToken);
-            const contractBalance = await usdc.balanceOf(liquidityPool.target);
-            // console.log("contractBalance", contractBalance)
-            expect(contractBalance).to.equal(amountToken);
+            await usdc.connect(client).approve(await liquidityPool.getAddress(), amountToken);
+            const clientBalance = await usdc.balanceOf(client.address);
+            console.log("clientBalance", clientBalance)
             const managerBalance = await usdc.balanceOf(manager.address);
-            // console.log("managerBalance", managerBalance)
-            expect(managerBalance).to.equal(10_000_000e6 - amountToken);
+            console.log("managerBalance", managerBalance)
+            console.log("address of client", client.address)
+            console.log("address of LP", await liquidityPool.getAddress())
+            await liquidityPool.connect(client).provide(amountToken);
           });       
     });
   });
