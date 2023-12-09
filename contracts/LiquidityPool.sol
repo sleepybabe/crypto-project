@@ -13,23 +13,43 @@ contract LiquidityPool{
     address public managerAddress;
     IERC20 USDC;
 
+    mapping (address => uint) ownerTokenCount;
+
     constructor(address manager, IERC20 _USDC){
         require(manager != address(0) );
         managerAddress = manager;
         USDC = _USDC;
     }
 
-    function changeBalance(uint amount) public{
-        balance += amount;
+    //про время на привлечение денег и время для вывода
+
+    function provide(uint amountToken) public{
+       require(startFundraise == true);
+       USDC.transferFrom(msg.sender, address(this), amountToken);
+       ownerTokenCount[msg.sender] += amountToken; //будет ли вот тут ломаться, мы же не задавали исходное значение = 0
+       balance += amountToken;
     }
+
+
+    function withdraw(uint amountToken)  public {
+        require(amountToken <= ownerTokenCount[msg.sender]);
+        USDC.transferFrom(address(this), msg.sender, amountToken);
+        balance -= amountToken;
+    }
+
+    function shareOf()  public returns (uint){
+       return ownerTokenCount[msg.sender];
+    }
+
+    function claimManagerFees(uint amountToken) public{
+        USDC.transferFrom(address(this), managerAddress, amountToken); 
+    }
+
+
 
     function initStartFundraise() public{
         startFundraise = true;
     }
 
-
-    function provide(uint amountToken) public{
-       USDC.transferFrom(msg.sender, address(this), amountToken);
-    }
 
 }
