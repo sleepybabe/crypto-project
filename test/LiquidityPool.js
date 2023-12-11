@@ -18,7 +18,9 @@ const {
         const usdc = await USDC.deploy();
         const usdcAddress = await usdc.getAddress()
         const LiquidityPool = await ethers.getContractFactory("LiquidityPool");
-        const liquidityPool = await LiquidityPool.deploy(manager.address, usdcAddress);
+        const liquidityPool = await LiquidityPool.deploy(manager.address, usdcAddress, 24*60*60);
+
+        await usdc.transfer(client.address, 1_000_000e6);
     
         return {liquidityPool, manager, usdc, client};
     }
@@ -29,18 +31,30 @@ const {
             expect(await liquidityPool.managerAddress()).to.equal(manager.address);
         })
 
-        it("Should transfer tokens", async function () {
+        it("Should transfer tokens to the LP", async function () {
             const { liquidityPool, client, usdc, manager} = await loadFixture(deployContract);
             const amountToken = 100;
             await usdc.connect(client).approve(await liquidityPool.getAddress(), amountToken);
             const clientBalance = await usdc.balanceOf(client.address);
-            console.log("clientBalance", clientBalance)
-            const managerBalance = await usdc.balanceOf(manager.address);
-            console.log("managerBalance", managerBalance)
-            console.log("address of client", client.address)
-            console.log("address of LP", await liquidityPool.getAddress())
+            const lpBalance = await usdc.balanceOf(await liquidityPool.getAddress());
             await liquidityPool.connect(client).provide(amountToken);
+            expect(clientBalance - BigInt(amountToken)).to.equal(await usdc.balanceOf(client.address));
+            expect(lpBalance + BigInt(amountToken)).to.equal(await usdc.balanceOf(await liquidityPool.getAddress()));
           });       
+
+          it("Should transfer tokens to the client", async function () {
+            const { liquidityPool, client, usdc, manager} = await loadFixture(deployContract);
+            const amountToken = 100;
+            // await usdc.transfer(await liquidityPool.getAddress(), 1_000_000e6);
+            await usdc.connect(client).approve(await liquidityPool.getAddress(), amountToken);
+            await liquidityPool.connect(client).provide(amountToken);
+            console.log(await usdc.balanceOf(await liquidityPool.getAddress()));
+            const clientBalance = await usdc.balanceOf(client.address);
+            const lpBalance = await usdc.balanceOf(await liquidityPool.getAddress());
+            await liquidityPool.connect(client).withdraw(amountToken);
+            expect(clientBalance + BigInt(amountToken)).to.equal(await usdc.balanceOf(client.address));
+            expect(lpBalance - BigInt(amountToken)).to.equal(await usdc.balanceOf(await liquidityPool.getAddress()));
+          });   
     });
   });
   
