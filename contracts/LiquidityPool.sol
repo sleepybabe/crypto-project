@@ -4,31 +4,34 @@ pragma solidity ^0.8.19;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {TraidingAccount} from "/TraidingAccount.sol";
+import {ITraidingAccount} from "./mocks/ITraidingAccount.sol";
 
 contract LiquidityPool{
     
     uint perfomanseFee = 5;
-    uint balance = 0;
-    bool startFundraise = false;
-    uint256 fundrisingStopTime;
-    uint256 timeForWithdraw;
+    uint balance = 0;//баланс, который занесли нам инвесторы
+    //bool startFundraise = false;
+    bool canTraiding = false;
+    uint256 fundrisingStopTime;//когда закончится время на ввод денег
+    uint256 timeForWithdraw; //24 часа на вывод 
+    // uint256 withdrawStartTime; // когда начнется 24 часа на вывод
+    // uint256 withdrawStopTime;// когда закончится 24 часа на вывод
     address public managerAddress;
     uint managerFee;
     IERC20 USDC;
-    TraidingAccount traidingAccount;
+    ITraidingAccount traidingAccount;
 
     mapping (address => uint) ownerTokenCount;
 
-    constructor(address manager, IERC20 _USDC, uint256 fundrisingDuration, TraidingAccount traidAc){
+    constructor(address manager, IERC20 _USDC, uint256 fundrisingDuration, ITraidingAccount traidAc){
         require(manager != address(0) );
         managerAddress = manager;
         traidingAccount = traidAc;
         USDC = _USDC;
         fundrisingStopTime = block.timestamp + fundrisingDuration;
+        // timeForWithdraw = _timeForWithdraw;
     }
 
-    //про время на привлечение денег и время для вывода
 
     function provide(uint amountToken) public{
        require(block.timestamp < fundrisingStopTime, "fundrising was finished");
@@ -37,6 +40,64 @@ contract LiquidityPool{
        USDC.transferFrom(msg.sender, address(this), amountToken);
     }
 
+    function withdraw() public {
+        // require(block.timestamp >  withdrawStartTime, "time for vyvod escho ne nastalo");
+        // require(block.timestamp <  withdrawStopTime, "time for vyvod yche prochlo");
+        uint amountLPToken = (ownerTokenCount[msg.sender] /  balance) * (USDC.balanceOf(address(this)) -  managerFee);
+        ownerTokenCount[msg.sender] = 0;
+        USDC.transfer(msg.sender, amountLPToken);
+    }
+
+
+    function startTraiding() public{
+        require(block.timestamp > fundrisingStopTime, "echo nelzuy torgovat");
+        canTraiding = true;
+    }
+
+    function swapUSDCtoETH(uint amountToken) public{
+        require(managerAddress == msg.sender);
+        traidingAccount.swapUSDCtoETHUniswap(amountToken);
+    }
+
+    function swapETHtoUSDC(uint amountToken)public{
+        require(managerAddress == msg.sender);
+        traidingAccount.swapETHtoUSDCUniswap(amountToken);
+    }
+
+
+    function calculateManagerFee() public returns(uint){
+        if(USDC.balanceOf(address(this)) > balance){
+            managerFee = 0;
+            return managerFee;
+        }
+        else {
+            uint pnl = uint256(USDC.balanceOf(address(this))) - uint256(balance);
+            managerFee = (pnl / 100) * uint256(perfomanseFee);
+            USDC.transfer(managerAddress, managerFee);
+            return managerFee;
+        }
+    }
+
+    function closeTraiding() public{
+        traidingAccount.swapETHtoUSDCUniswap(address(this).balance);
+        calculateManagerFee();
+        // withdrawStartTime = block.timestamp;
+        // withdrawStopTime = block.timestamp + timeForWithdraw;
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // function initStartFundraise() public{
+    //     startFundraise = true;
+    // }
 
     // function withdraw(uint amountToken)  public {
     //     require(amountToken <= ownerTokenCount[msg.sender], "amount is too large");
@@ -44,37 +105,5 @@ contract LiquidityPool{
     //     ownerTokenCount[msg.sender] -= amountToken;
     
     // }
-
-    function withdraw()  public {
-        uint a = (ownerTokenCount[msg.sender] /  balance) * (USDC.balanceOf(address(this)) -  managerFee);
-        ownerTokenCount[msg.sender] = 0;
-        USDC.transfer(msg.sender, a);
-    }
-
-
-
-    function startTraiding() public{
-        traidingAccount.getToken();
-    }
-
-
-    function closeTraiding()public{
-        //продать весь эфир
-        // int pnl = int256(USDC.balanceOf(address(this))) - int256(balance);
-        // int managerFee = (pnl / 100) * int256(perfomanseFee);
-        //проверка на отриц число
-        uint pnl = uint256(USDC.balanceOf(address(this))) - uint256(balance);
-        managerFee = (pnl / 100) * uint256(perfomanseFee);
-        //проверка на положит прибыль managerFee != 0
-        USDC.transfer(managerAddress, managerFee);
-    }
-
-    
-
-
-    function initStartFundraise() public{
-        startFundraise = true;
-    }
-
 
 }
