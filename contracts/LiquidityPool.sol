@@ -48,7 +48,6 @@ contract LiquidityPool{
         USDC.transfer(msg.sender, amountLPToken);
     }
 
-
     function startTraiding() public{
         require(block.timestamp > fundrisingStopTime, "echo nelzuy torgovat");
         canTraiding = true;
@@ -83,6 +82,16 @@ contract LiquidityPool{
         calculateManagerFee();
         // withdrawStartTime = block.timestamp;
         // withdrawStopTime = block.timestamp + timeForWithdraw;
+    }
+
+    //для теста
+    function getOwnerTokenCount(address _address) public view returns (uint){
+        return ownerTokenCount[_address];
+    }
+
+    //для теста
+    function getCanTraiding() public view returns (bool){
+        return canTraiding;
     }
 
 
