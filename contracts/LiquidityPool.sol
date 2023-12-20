@@ -83,6 +83,7 @@ contract LiquidityPool{
     function closeTraiding() public{
         traidingAccount.swapETHtoUSDCUniswap{value: address(this).balance}();
         calculateManagerFee();
+        canTraiding = false;
         // withdrawStartTime = block.timestamp;
         // withdrawStopTime = block.timestamp + timeForWithdraw;
     }
