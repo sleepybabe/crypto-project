@@ -97,6 +97,11 @@ contract LiquidityPool{
         return canTraiding;
     }
 
+    //для теста
+    function getManagerFee() public view returns (uint){
+        return managerFee;
+    }
+
 
 
 
