@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 interface ITraidingAccount{
 
-    function swapUSDCtoETHUniswap(uint amountToken) external  returns (uint);
+    function swapUSDCtoETHUniswap(uint amountToken) external;
 
-    function swapETHtoUSDCUniswap(uint amountToken)external returns (uint);
+    function swapETHtoUSDCUniswap()external payable;
 
 }

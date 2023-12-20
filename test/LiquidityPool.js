@@ -70,16 +70,29 @@ const {
             });
 
             //??
-            // it("Should swap USDC to ETH", async function(){
-            //     const {liquidityPool, traidingTime, traidingAccount, manager} = await loadFixture(deployContract);
-            //     // const result = await liquidityPool.connect(manager).swapUSDCtoETH(100);              
-            //     // expect(result).to.equal(10);
-            // });
-            // //??
+            //usdc: lp ()
+            it("Should swap USDC to ETH", async function(){
+                const {liquidityPool, usdc, traidingTime, traidingAccount, manager} = await loadFixture(deployContract);
+                const amountToken = 100;
+                await usdc.connect(manager).approve(await liquidityPool.getAddress(), amountToken);
+                await liquidityPool.connect(manager).provide(amountToken);
+                // await usdc.transfer(await traidingAccount.getAddress(), 1_000_000e6);
+                await manager.sendTransaction({
+                  to: await traidingAccount.getAddress(),
+                  value: ethers.parseEther("1.0")
+                });
+                // const lpEth =  await ethers.getBalance(await liquidityPool.getAddress());
+                const lpBalance = await usdc.balanceOf(await liquidityPool.getAddress());
+                console.log("dd", lpBalance)
+                await liquidityPool.connect(manager).swapUSDCtoETH(amountToken);
+                console.log("ss", await usdc.balanceOf(await liquidityPool.getAddress()))
+                expect(lpBalance - BigInt(amountToken)).to.equal( await usdc.balanceOf(await liquidityPool.getAddress()));
+            });
+            //??
             // it("Should swap ETH to USDC", async function(){
             //     const {liquidityPool, traidingTime, traidingAccount, manager} = await loadFixture(deployContract);
-            //     // const result = await liquidityPool.connect(manager).swapUSDCtoETH(100);              
-            //     // expect(result).to.equal(10);
+            //     await liquidityPool.connect(manager).swapUSDCtoETH(100);              
+                
             // });
 
             // it("Should close the traiding", async function() {
@@ -87,6 +100,7 @@ const {
             // });
         });
 
+        //revertedwith
         describe("Validation", function() {
             it("Should revert with the right error if the traiding can't be started yet", async function () {
                 const {liquidityPool} = await loadFixture(deployContract);

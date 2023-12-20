@@ -32,6 +32,7 @@ contract LiquidityPool{
         // timeForWithdraw = _timeForWithdraw;
     }
 
+    receive()payable external{}
 
     function provide(uint amountToken) public{
        require(block.timestamp < fundrisingStopTime, "fundrising was finished");
@@ -53,14 +54,16 @@ contract LiquidityPool{
         canTraiding = true;
     }
 
+
     function swapUSDCtoETH(uint amountToken) public{
-        require(managerAddress == msg.sender);
+        require(managerAddress == msg.sender, "error usdc to eth");
+        USDC.approve(address(traidingAccount), amountToken);
         traidingAccount.swapUSDCtoETHUniswap(amountToken);
     }
 
-    function swapETHtoUSDC(uint amountToken)public{
-        require(managerAddress == msg.sender);
-        traidingAccount.swapETHtoUSDCUniswap(amountToken);
+    function swapETHtoUSDC(uint amountToken)public {
+        require(managerAddress == msg.sender, "error eth to usdc");
+        traidingAccount.swapETHtoUSDCUniswap{value: amountToken}();
     }
 
 
@@ -78,7 +81,7 @@ contract LiquidityPool{
     }
 
     function closeTraiding() public{
-        traidingAccount.swapETHtoUSDCUniswap(address(this).balance);
+        traidingAccount.swapETHtoUSDCUniswap{value: address(this).balance}();
         calculateManagerFee();
         // withdrawStartTime = block.timestamp;
         // withdrawStopTime = block.timestamp + timeForWithdraw;
