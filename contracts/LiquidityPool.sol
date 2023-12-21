@@ -68,7 +68,7 @@ contract LiquidityPool{
 
 
     function calculateManagerFee() public returns(uint){
-        if(USDC.balanceOf(address(this)) > balance){
+        if(USDC.balanceOf(address(this)) <= balance){
             managerFee = 0;
             return managerFee;
         }
@@ -101,6 +101,11 @@ contract LiquidityPool{
     //для теста
     function getManagerFee() public view returns (uint){
         return managerFee;
+    }
+
+    //для теста
+    function getBalance() public view returns (uint){
+        return balance;
     }
 
 

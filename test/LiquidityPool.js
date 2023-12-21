@@ -91,42 +91,76 @@ const {
             });
             
             it("Should swap ETH to USDC", async function(){
-              const {liquidityPool, usdc, traidingAccount, manager} = await loadFixture(deployContract);
-              const amountToken = 1000000000000n;
-              await usdc.transfer(await traidingAccount.getAddress(), 1_000_000e6);
-              await manager.sendTransaction({
-                to: await liquidityPool.getAddress(),
-                value: ethers.parseEther("1.0")
-              });
-              const traidingEthBalance = await ethers.provider.getBalance(await traidingAccount.getAddress());
-              const lpEthBalance = await ethers.provider.getBalance(await liquidityPool.getAddress());
-              const lpUsdcBalance = await usdc.balanceOf(await liquidityPool.getAddress());
-              const traidingUsdcBalance = await usdc.balanceOf(await traidingAccount.getAddress());
-              // console.log("1usdc LP", await usdc.balanceOf(await liquidityPool.getAddress()))
-              // console.log("1ETH TR",await ethers.provider.getBalance(await traidingAccount.getAddress()))
-              // console.log("1ETH LP", await ethers.provider.getBalance(await liquidityPool.getAddress()))
-              // console.log("1uscd TR", await usdc.balanceOf(await traidingAccount.getAddress()))
-              await liquidityPool.connect(manager).swapETHtoUSDC(amountToken);
-              expect(traidingUsdcBalance - 2000n * amountToken/BigInt(1e12)).to.
-                                equal(await usdc.balanceOf(await traidingAccount.getAddress()));
-              expect(lpUsdcBalance + 2000n * amountToken/BigInt(1e12)).to.
-                                equal(await usdc.balanceOf(await liquidityPool.getAddress()));
-              expect(traidingEthBalance + amountToken).to.equal(await ethers.provider.getBalance(await traidingAccount.getAddress()));
-              expect(lpEthBalance - amountToken).to.equal(await ethers.provider.getBalance(await liquidityPool.getAddress()));
+                const {liquidityPool, usdc, traidingAccount, manager} = await loadFixture(deployContract);
+                const amountToken = 1000000000000n;
+                await usdc.transfer(await traidingAccount.getAddress(), 1_000_000e6);
+                await manager.sendTransaction({
+                  to: await liquidityPool.getAddress(),
+                  value: ethers.parseEther("1.0")
+                });
+                const traidingEthBalance = await ethers.provider.getBalance(await traidingAccount.getAddress());
+                const lpEthBalance = await ethers.provider.getBalance(await liquidityPool.getAddress());
+                const lpUsdcBalance = await usdc.balanceOf(await liquidityPool.getAddress());
+                const traidingUsdcBalance = await usdc.balanceOf(await traidingAccount.getAddress());
+                // console.log("1usdc LP", await usdc.balanceOf(await liquidityPool.getAddress()))
+                // console.log("1ETH TR",await ethers.provider.getBalance(await traidingAccount.getAddress()))
+                // console.log("1ETH LP", await ethers.provider.getBalance(await liquidityPool.getAddress()))
+                // console.log("1uscd TR", await usdc.balanceOf(await traidingAccount.getAddress()))
+                await liquidityPool.connect(manager).swapETHtoUSDC(amountToken);
+                expect(traidingUsdcBalance - 2000n * amountToken/BigInt(1e12)).to.
+                                  equal(await usdc.balanceOf(await traidingAccount.getAddress()));
+                expect(lpUsdcBalance + 2000n * amountToken/BigInt(1e12)).to.
+                                  equal(await usdc.balanceOf(await liquidityPool.getAddress()));
+                expect(traidingEthBalance + amountToken).to.equal(await ethers.provider.getBalance(await traidingAccount.getAddress()));
+                expect(lpEthBalance - amountToken).to.equal(await ethers.provider.getBalance(await liquidityPool.getAddress()));
             });
 
             it("Should return the right manager fee", async function() {
-              const {liquidityPool, usdc, traidingAccount, manager} = await loadFixture(deployContract);
-
-
-              await liquidityPool.calculateManagerFee();
-              const managerFee = await liquidityPool.getManagerFee();
-              console.log(managerFee);
+                const {liquidityPool, usdc, client, manager} = await loadFixture(deployContract);
+                const amountToken = 200n;
+                await usdc.connect(client).approve(await liquidityPool.getAddress(), amountToken);
+                await liquidityPool.connect(client).provide(amountToken);
+                await usdc.transfer(await liquidityPool.getAddress(), amountToken);
+                const usdcBalance = await usdc.balanceOf((await liquidityPool.getAddress()));
+                const managerBalance = await usdc.balanceOf(manager.address);
+                await liquidityPool.calculateManagerFee();
+                const managerFee = (usdcBalance - await liquidityPool.getBalance())/100n * 5n
+                expect(await liquidityPool.getManagerFee()).to.equal(managerFee);
+                expect(await await usdc.balanceOf((await liquidityPool.getAddress()))).to.equal(usdcBalance - managerFee);
+                expect(await usdc.balanceOf(manager.address)).to.equal(managerBalance + managerFee);
+                //
+                await liquidityPool.connect(client).withdraw();
+                await liquidityPool.calculateManagerFee();
+                expect(await liquidityPool.getManagerFee()).to.equal(0);
             });
 
-            // it("Should close the traiding", async function() {
-              
-            // });
+            it("Should close the traiding", async function() {
+                const {liquidityPool, usdc, manager, traidingAccount} = await loadFixture(deployContract);
+                const amountToken = 1000000000000n;
+                await usdc.transfer(await traidingAccount.getAddress(), amountToken);
+                await usdc.connect(manager).approve(await liquidityPool.getAddress(), amountToken);
+                await liquidityPool.connect(manager).provide(amountToken);
+                await manager.sendTransaction({
+                  to: await liquidityPool.getAddress(),
+                  value: ethers.parseEther("1.0")
+                });
+
+                const lpEthBalance = await ethers.provider.getBalance(await liquidityPool.getAddress());
+                const lpBalance = await usdc.balanceOf(await liquidityPool.getAddress());
+                const formula = 2000n * lpEthBalance/BigInt(1e12);
+                const managerBalance = await usdc.balanceOf(manager.address);
+                
+                await liquidityPool.closeTraiding();
+                
+                expect(await liquidityPool.getCanTraiding()).to.be.false;
+                expect(await ethers.provider.getBalance(await liquidityPool.getAddress())).to.equal(0);
+                expect(lpBalance + formula - await liquidityPool.getManagerFee()).to.
+                                equal(await usdc.balanceOf(await liquidityPool.getAddress()));
+                expect(lpEthBalance).to.equal(await ethers.provider.getBalance(await traidingAccount.getAddress()));
+                expect(amountToken - formula).to.equal(await usdc.balanceOf(await traidingAccount.getAddress()));
+                expect(await usdc.balanceOf(manager.address)).to.
+                                equal(managerBalance + await liquidityPool.getManagerFee());
+            });
         });
 
         //revertedwith
@@ -160,13 +194,13 @@ const {
                     await liquidityPool.connect(client).swapUSDCtoETH(100);
                     throw new Error("Expected an error but didn't get one");
                   } catch (error) {
-                    expect(error.message).to.include("");
+                    expect(error.message).to.include("error usdc to eth");
                   }
                 try {
                     await liquidityPool.connect(client).swapETHtoUSDC(100);
                     throw new Error("Expected an error but didn't get one");
                   } catch (error) {
-                    expect(error.message).to.include("");
+                    expect(error.message).to.include("error eth to usdc");
                   }
             });
         });
