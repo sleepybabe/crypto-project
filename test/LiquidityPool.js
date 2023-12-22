@@ -92,7 +92,7 @@ const {
             
             it("Should swap ETH to USDC", async function(){
                 const {liquidityPool, usdc, traidingAccount, manager} = await loadFixture(deployContract);
-                const amountToken = 1000000000000n;
+                const amountToken = 1000n;
                 await usdc.transfer(await traidingAccount.getAddress(), 1_000_000e6);
                 await manager.sendTransaction({
                   to: await liquidityPool.getAddress(),

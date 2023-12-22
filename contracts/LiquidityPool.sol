@@ -109,15 +109,6 @@ contract LiquidityPool{
     }
 
 
-
-
-
-
-
-
-
-
-
     // function initStartFundraise() public{
     //     startFundraise = true;
     // }
